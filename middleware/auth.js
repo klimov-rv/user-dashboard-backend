@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 function authMiddleware(req, res, next) {
-    // Токен обычно передается в заголовке Authorization: Bearer <token>
+    // Токен в заголовке Authorization: Bearer <token>
     const authHeader = req.header('Authorization');
 
     if (!authHeader) {
@@ -16,7 +16,7 @@ function authMiddleware(req, res, next) {
         req.user = decoded; // Добавляем данные пользователя в запрос
         next();
     } catch (error) {
-        res.status(401).json({ message: 'Неверный токен' });
+        res.status(401).json({ message: 'Неверный токен', error });
     }
 }
 

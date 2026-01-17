@@ -31,14 +31,14 @@
 ## Функционал
 
 - [x] Регистрация пользователя (POST /api/register)
-- [ ] Вход в систему (POST /api/login)
-- [ ] Просмотр профиля (GET /api/profile) - защищено JWT
-- [ ] Хеширование паролей
-- [ ] Валидация данных
+- [x] Вход в систему (POST /api/login)
+- [x] Просмотр профиля (GET /api/profile) - защищено JWT
+- [x] Хеширование паролей
+- [x] Валидация данных
 
 ## Структура проекта
 
-```
+```md
 /user-dashboard-backend
   /data
     users.json          # Хранилище пользователей
@@ -69,7 +69,7 @@
 
 ## Переменные окружения (.env)
 
-```
+```env
 JWT_SECRET=your_super_secret_key_here_change_this
 PORT=5000
 ```

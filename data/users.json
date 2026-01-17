@@ -5,5 +5,12 @@
     "password": "$2b$10$ATqgKQ1G.B.qpCUo9FcV9OC.41ZdTdlj3b7WTyJdY2xjxBVVuQ.9W",
     "name": "Test User",
     "createdAt": "2026-01-15T21:49:50.368Z"
+  },
+  {
+    "id": 1768646224679,
+    "email": "test2@mail.com",
+    "password": "$2b$10$4IHwT8d2SzRUmN5nv8g6OuW46gXicpFEKmml6Om.l10l8G3GIkRoa",
+    "name": "Another Test User",
+    "createdAt": "2026-01-17T10:37:04.679Z"
   }
 ]

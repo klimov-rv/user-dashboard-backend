@@ -1,0 +1,47 @@
+@host = http://localhost:5000
+@email = test@mail.com
+@password = 123456
+@name = Тестовый Пользователь
+@contentType = application/json
+@temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODUxMzc5MDM2OCwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzY4NjU0MDg0LCJleHAiOjE3Njg2NTc2ODR9.PPFv0ogTJwww0stwOFV4tWuNvTlEul-EuACc3NQ7Omw
+
+### Проверка работы сервера
+GET {{host}}
+
+
+### Регистрация нового пользователя
+# @name register
+POST {{host}}/api/register
+Content-Type: {{contentType}}
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "name": "{{name}}"
+}
+
+### Вход в систему
+# @name login
+POST {{host}}/api/login
+Content-Type: {{contentType}}
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Получение профиля (требуется токен)
+# Предварительно выполните запрос login и скопируйте токен
+GET {{host}}/api/profile
+Authorization: {{temporaryJWT}}
+Content-Type: {{contentType}}
+
+
+### Выход пользователя (Logout)
+POST {{host}}/api/logout
+Authorization: {{temporaryJWT}}
+Content-Type: {{contentType}}
+
+{
+  "email": "incomplete@mail.com"
+}
