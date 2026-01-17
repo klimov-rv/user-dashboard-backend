@@ -1,16 +1,23 @@
 [
-  {
-    "id": 1768513790368,
-    "email": "test@mail.com",
-    "password": "$2b$10$ATqgKQ1G.B.qpCUo9FcV9OC.41ZdTdlj3b7WTyJdY2xjxBVVuQ.9W",
-    "name": "Test User",
-    "createdAt": "2026-01-15T21:49:50.368Z"
-  },
-  {
-    "id": 1768646224679,
-    "email": "test2@mail.com",
-    "password": "$2b$10$4IHwT8d2SzRUmN5nv8g6OuW46gXicpFEKmml6Om.l10l8G3GIkRoa",
-    "name": "Another Test User",
-    "createdAt": "2026-01-17T10:37:04.679Z"
-  }
+    {
+        "id": 1768513790368,
+        "email": "test@mail.com",
+        "password": "$2b$10$ATqgKQ1G.B.qpCUo9FcV9OC.41ZdTdlj3b7WTyJdY2xjxBVVuQ.9W",
+        "name": "Test User",
+        "createdAt": "2026-01-15T21:49:50.368Z"
+    },
+    {
+        "id": 1768646224679,
+        "email": "test2@mail.com",
+        "password": "$2b$10$4IHwT8d2SzRUmN5nv8g6OuW46gXicpFEKmml6Om.l10l8G3GIkRoa",
+        "name": "Another Test User",
+        "createdAt": "2026-01-17T10:37:04.679Z"
+    },
+    {
+        "id": 1768680494486,
+        "username": "user_1",
+        "password": "$2b$10$T6vfumgdkkwkhMRGHRFnBeRDCZOuHI13vGSEK/4jeHzXVGP7uSBsK",
+        "createdAt": "2026-01-17T20:08:14.486Z",
+        "updatedAt": "2026-01-17T20:08:14.487Z"
+    }
 ]

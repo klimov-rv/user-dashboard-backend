@@ -1,8 +1,10 @@
 import jwt from 'jsonwebtoken';
+import { isTokenBlacklisted } from '../utils/file-handlers.js';
 
 async function authMiddleware(req, res, next) {
     try {
         const authHeader = req.header('Authorization');
+        console.log("authHeader:", authHeader)
 
         if (!authHeader) {
             return res.status(401).json({
@@ -11,6 +13,7 @@ async function authMiddleware(req, res, next) {
         }
 
         const token = authHeader.replace('Bearer ', '');
+        console.log("token:", token)
 
         // Проверяем blacklist
         const isBlacklisted = await isTokenBlacklisted(token);
@@ -32,6 +35,7 @@ async function authMiddleware(req, res, next) {
         }
 
         res.status(401).json({
+            error,
             message: 'Неверный токен'
         });
     }

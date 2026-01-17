@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import jwt from 'jsonwebtoken';
 import path from 'path';
 
 const USERS_FILE = path.join('data', 'users.json');
@@ -15,14 +16,21 @@ export async function writeUsers(users) {
     await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+
 // Чтение blacklist токенов
 export async function readBlacklist() {
     try {
-        await fs.access(BLACKLIST_FILE);
+        const exists = await fileExists(BLACKLIST_FILE);
+        if (!exists) {
+            console.log("Файл blacklist не существует, возвращаю пустой массив.");
+            return [];
+        }
+
         const data = await fs.readFile(BLACKLIST_FILE, 'utf8');
-        сonsole.log("BLACKLIST_FILE data: ", data);
-        return JSON.parse(data);
+        console.log("BLACKLIST_FILE data: ", data);
+        return data ? JSON.parse(data) : [];
     } catch (error) {
+        console.error("Ошибка при чтении blacklist:", error);
         return [];
     }
 }
@@ -30,7 +38,9 @@ export async function readBlacklist() {
 // Добавление токена в blacklist
 export async function addToBlacklist(token) {
     try {
+        console.log('addToBlacklist');
         const blacklist = await readBlacklist();
+        console.log('blacklist: ', blacklist);
 
         // Декодируем токен для получения времени истечения
         const decoded = jwt.decode(token);
@@ -41,6 +51,7 @@ export async function addToBlacklist(token) {
 
         const expiresAt = decoded.exp * 1000; // в миллисекундах
 
+        console.log('decoded');
         // Добавляем только если еще нет
         if (!blacklist.some(item => item.token === token)) {
             blacklist.push({
@@ -57,14 +68,27 @@ export async function addToBlacklist(token) {
     }
 }
 
+// Проверка существования файла
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+
 // Проверка, находится ли токен в blacklist
 export async function isTokenBlacklisted(token) {
     try {
         const blacklist = await readBlacklist();
+        console.log('blacklist: ', blacklist);
         const now = Date.now();
 
         // Фильтруем только актуальные токены
         const validBlacklist = blacklist.filter(item => item.expiresAt > now);
+        console.log('validBlacklist: ', validBlacklist);
 
         // Удаляем протухшие из файла
         if (validBlacklist.length !== blacklist.length) {
