@@ -8,12 +8,9 @@ import {
     readUsers,
     writeUsers,
     addToBlacklist,
-    isTokenBlacklisted
 } from './utils/file-handlers.js';
 
 import authMiddleware from './middleware/auth.js';
-import handleAuthRPC from './rpc/auth-handler.js';
-import handleUserRPC from './rpc/user-handler.js';
 
 const app = express();
 app.use(express.json()); // Позволяет читать JSON в теле запроса
@@ -41,32 +38,34 @@ app.post('/api/auth/sign-up', async (req, res) => {
     try {
         console.log('📝 Sign Up запрос:', req.body);
 
-        const { email, password, name } = req.body;
+        const { username, password } = req.body;
 
         // Валидация
-        if (!email || !password || !name) {
+        if (!username || !password) {
             return res.status(400).json({
-                success: false,
-                error: 'Все поля обязательны: email, password, name'
+                message: 'Поля обязательны: username, password'
             });
         }
 
-        // Простая валидация email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        // Простая валидация username
+        //  `^`             — начало строки.
+        //  `[a-zA-Z0-9_-]` — разрешены латинские буквы, цифры, подчёркивание и дефис.
+        //  `{3,20}`        — длина от 3 до 20 символов.
+        //  `$`             — конец строки.
+
+        const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+        if (!usernameRegex.test(username)) {
             return res.status(400).json({
-                success: false,
-                error: 'Неверный формат email'
+                message: 'Неверный формат username'
             });
         }
 
         const users = await readUsers();
 
         // Проверка существования пользователя
-        if (users.find(user => user.email === email)) {
+        if (users.find(user => user.username === username)) {
             return res.status(409).json({
-                success: false,
-                error: 'Пользователь с таким email уже существует'
+                message: 'Пользователь с таким username уже существует'
             });
         }
 
@@ -75,10 +74,9 @@ app.post('/api/auth/sign-up', async (req, res) => {
 
         // Создание пользователя
         const newUser = {
-            id: Date.now().toString(),
-            email,
+            id: Date.now(),
+            username,
             password: hashedPassword,
-            name,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -86,26 +84,16 @@ app.post('/api/auth/sign-up', async (req, res) => {
         users.push(newUser);
         await writeUsers(users);
 
-        console.log(`✅ Пользователь создан: ${email}`);
+        console.log(`✅ Пользователь создан: ${username}`);
 
         res.status(201).json({
-            success: true,
-            data: {
-                message: 'Пользователь успешно зарегистрирован',
-                userId: newUser.id,
-                user: {
-                    id: newUser.id,
-                    email: newUser.email,
-                    name: newUser.name
-                }
-            }
+            username: newUser.username,
         });
 
     } catch (error) {
         console.error('❌ Ошибка Sign Up:', error);
         res.status(500).json({
-            success: false,
-            error: 'Внутренняя ошибка сервера'
+            message: 'Внутренняя ошибка сервера'
         });
     }
 });
@@ -113,35 +101,32 @@ app.post('/api/auth/sign-up', async (req, res) => {
 // 2. ВХОД (Sign In)
 app.post('/api/auth/sign-in', async (req, res) => {
     try {
-        console.log('🔐 Sign In запрос для:', req.body.email);
+        console.log('🔐 Sign In запрос для:', req.body.username);
 
-        const { email, password } = req.body;
+        const { username, password } = req.body;
 
-        if (!email || !password) {
+        if (!username || !password) {
             return res.status(400).json({
-                success: false,
-                error: 'Email и password обязательны'
+                message: 'username и password обязательны'
             });
         }
 
         const users = await readUsers();
-        const user = users.find(user => user.email === email);
+        const user = users.find(user => user.username === username);
 
         if (!user) {
-            console.log('❌ Пользователь не найден:', email);
+            console.log('❌ Пользователь не найден:', username);
             return res.status(401).json({
-                success: false,
-                error: 'Неверный email или пароль'
+                message: 'Неверный username или пароль'
             });
         }
 
         // Проверка пароля
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            console.log('❌ Неверный пароль для:', email);
+            console.log('❌ Неверный пароль для:', username);
             return res.status(401).json({
-                success: false,
-                error: 'Неверный email или пароль'
+                message: 'Неверный username или пароль'
             });
         }
 
@@ -149,34 +134,23 @@ app.post('/api/auth/sign-in', async (req, res) => {
         const token = jwt.sign(
             {
                 id: user.id,
-                email: user.email,
-                name: user.name
+                username: user.username,
             },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        console.log(`✅ Успешный вход: ${email}`);
+        console.log(`✅ Успешный вход: ${username}`);
 
         res.json({
-            success: true,
-            data: {
-                token,
-                tokenType: 'Bearer',
-                expiresIn: 3600, // секунд
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name
-                }
-            }
+            token,
+            username: user.username,
         });
 
     } catch (error) {
         console.error('❌ Ошибка Sign In:', error);
         res.status(500).json({
-            success: false,
-            error: 'Внутренняя ошибка сервера'
+            message: 'Внутренняя ошибка сервера'
         });
     }
 });
@@ -189,21 +163,14 @@ app.post('/api/auth/sign-out', authMiddleware, async (req, res) => {
         // Добавляем токен в blacklist
         await addToBlacklist(token);
 
-        console.log(`🚪 Пользователь ${req.user.email} вышел из системы`);
+        console.log(`🚪 Пользователь ${req.user.username} вышел из системы`);
 
-        res.json({
-            success: true,
-            data: {
-                message: 'Вы успешно вышли из системы',
-                logoutTime: new Date().toISOString()
-            }
-        });
+        res.status(204)
 
     } catch (error) {
         console.error('❌ Ошибка Sign Out:', error);
         res.status(500).json({
-            success: false,
-            error: 'Ошибка при выходе из системы'
+            message: 'Внутренняя ошибка сервера'
         });
     }
 });
@@ -216,27 +183,18 @@ app.get('/api/users/me', authMiddleware, async (req, res) => {
 
         if (!user) {
             return res.status(404).json({
-                success: false,
-                error: 'Пользователь не найден'
+                message: 'Пользователь не найден'
             });
         }
 
-        const { password, ...userData } = user;
-
         res.json({
-            success: true,
-            data: {
-                ...userData,
-                sessionActive: true,
-                lastActivity: new Date().toISOString()
-            }
+            username: user.username,
         });
 
     } catch (error) {
         console.error('❌ Ошибка получения профиля:', error);
         res.status(500).json({
-            success: false,
-            error: 'Ошибка при получении профиля'
+            message: 'Неизвестная ошибка при получении профиля'
         });
     }
 });

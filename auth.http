@@ -1,88 +1,41 @@
-@host = http://localhost:5000
-@email = test@mail.com
-@password = 123456
-@name = Тестовый Пользователь
+@host_api = http://localhost:5000/api
+@username = user_1
+@password = password
 @contentType = application/json
-@temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODUxMzc5MDM2OCwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzY4NjU4ODkzLCJleHAiOjE3Njg2NjI0OTN9.lKr8VTQC1FonR-mcB9NclMkc7uIEFCzkZKgb9EFKbus
+@temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODY4MDQ5NDQ4NiwidXNlcm5hbWUiOiJ1c2VyXzEiLCJpYXQiOjE3Njg2ODE1NTMsImV4cCI6MTc2ODY4NTE1M30.8EclbgM3H7UisSEQC1-j20sF-TMvWc19atiYuqnk02U
 
 ### Проверка работы сервера
-GET {{host}}
+GET {{host_api}}/health
 
 
 ### Регистрация нового пользователя
 # @name register
-POST {{host}}/api/register
+POST {{host_api}}/auth/sign-up
 Content-Type: {{contentType}}
 
 {
-  "email": "{{email}}",
-  "password": "{{password}}",
-  "name": "{{name}}"
+  "username": "{{username}}",
+  "password": "{{password}}"
 }
 
 ### Вход в систему
 # @name login
-POST {{host}}/api/login
+POST {{host_api}}/auth/sign-in
 Content-Type: {{contentType}}
 
 {
-  "email": "{{email}}",
+  "username": "{{username}}",
   "password": "{{password}}"
 }
 
 ### Получение профиля (требуется токен)
 # Предварительно выполните запрос login и скопируйте токен
-GET {{host}}/api/profile
+GET {{host_api}}/users/me
 Authorization: {{temporaryJWT}}
 Content-Type: {{contentType}}
 
 
 ### Выход пользователя (Logout)
-POST {{host}}/api/logout
+POST {{host_api}}/auth/sign-out
 Authorization: {{temporaryJWT}}
 Content-Type: {{contentType}}
-
-{
-  "email": "incomplete@mail.com"
-}
-
-### RPC запрос на регистрацию
-POST {{host}}/rpc
-Content-Type: {{contentType}}
-
-{
-  "jsonrpc": "2.0",
-  "method": "auth.register",
-  "params": {
-    "email": "test@mail.com",
-    "password": "123456",
-    "name": "Тест"
-  },
-  "id": 1
-}
-
-### RPC запрос на вход
-POST {{host}}/rpc
-Content-Type: {{contentType}}
-
-{
-  "jsonrpc": "2.0",
-  "method": "auth.login",
-  "params": {
-    "email": "test@mail.com",
-    "password": "123456"
-  },
-  "id": 2
-}
-
-### RPC запрос на получение профиля (с токеном)
-POST {{host}}/rpc
-Content-Type: {{contentType}}
-Authorization: {{temporaryJWT}}
-
-{
-  "jsonrpc": "2.0",
-  "method": "user.getProfile",
-  "params": {},
-  "id": 3
-}

@@ -20,6 +20,7 @@ export async function readBlacklist() {
     try {
         await fs.access(BLACKLIST_FILE);
         const data = await fs.readFile(BLACKLIST_FILE, 'utf8');
+        сonsole.log("BLACKLIST_FILE data: ", data);
         return JSON.parse(data);
     } catch (error) {
         return [];

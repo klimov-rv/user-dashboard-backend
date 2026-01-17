@@ -6,8 +6,7 @@ async function authMiddleware(req, res, next) {
 
         if (!authHeader) {
             return res.status(401).json({
-                success: false,
-                error: 'Требуется авторизация'
+                message: 'Требуется авторизация'
             });
         }
 
@@ -17,8 +16,7 @@ async function authMiddleware(req, res, next) {
         const isBlacklisted = await isTokenBlacklisted(token);
         if (isBlacklisted) {
             return res.status(401).json({
-                success: false,
-                error: 'Сессия истекла. Войдите снова.'
+                message: 'Сессия истекла. Войдите снова.'
             });
         }
 
@@ -29,14 +27,12 @@ async function authMiddleware(req, res, next) {
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
             return res.status(401).json({
-                success: false,
-                error: 'Токен истек'
+                message: 'Токен истек'
             });
         }
 
         res.status(401).json({
-            success: false,
-            error: 'Неверный токен'
+            message: 'Неверный токен'
         });
     }
 }
