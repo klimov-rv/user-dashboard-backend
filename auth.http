@@ -3,7 +3,7 @@
 @password = 123456
 @name = Тестовый Пользователь
 @contentType = application/json
-@temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODUxMzc5MDM2OCwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzY4NjU0MDg0LCJleHAiOjE3Njg2NTc2ODR9.PPFv0ogTJwww0stwOFV4tWuNvTlEul-EuACc3NQ7Omw
+@temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODUxMzc5MDM2OCwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzY4NjU4ODkzLCJleHAiOjE3Njg2NjI0OTN9.lKr8VTQC1FonR-mcB9NclMkc7uIEFCzkZKgb9EFKbus
 
 ### Проверка работы сервера
 GET {{host}}
@@ -44,4 +44,45 @@ Content-Type: {{contentType}}
 
 {
   "email": "incomplete@mail.com"
+}
+
+### RPC запрос на регистрацию
+POST {{host}}/rpc
+Content-Type: {{contentType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "auth.register",
+  "params": {
+    "email": "test@mail.com",
+    "password": "123456",
+    "name": "Тест"
+  },
+  "id": 1
+}
+
+### RPC запрос на вход
+POST {{host}}/rpc
+Content-Type: {{contentType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "auth.login",
+  "params": {
+    "email": "test@mail.com",
+    "password": "123456"
+  },
+  "id": 2
+}
+
+### RPC запрос на получение профиля (с токеном)
+POST {{host}}/rpc
+Content-Type: {{contentType}}
+Authorization: {{temporaryJWT}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "user.getProfile",
+  "params": {},
+  "id": 3
 }

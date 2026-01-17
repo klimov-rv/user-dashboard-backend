@@ -31,3 +31,15 @@ Content-Type: {{contentType}}
 {
   "email": "incomplete@mail.com"
 }
+
+
+### RPC запрос с ошибкой (несуществующий метод)
+POST {{host}}/rpc
+Content-Type: {{contentType}}
+
+{
+  "jsonrpc": "2.0",
+  "method": "auth.nonexistent",
+  "params": {},
+  "id": 4
+}

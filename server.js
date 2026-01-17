@@ -1,93 +1,33 @@
-import * as fs from 'node:fs/promises';
+
 import 'dotenv/config';
 import express from 'express';
-import path from 'path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+
+import {
+    readUsers,
+    writeUsers,
+    addToBlacklist,
+    isTokenBlacklisted
+} from './utils/file-handlers.js';
+
 import authMiddleware from './middleware/auth.js';
+import handleAuthRPC from './rpc/auth-handler.js';
+import handleUserRPC from './rpc/user-handler.js';
 
 const app = express();
 app.use(express.json()); // Позволяет читать JSON в теле запроса
 
 const PORT = process.env.PORT;
 
-app.get('/', (_, res) => {
-    res.send('API личного кабинета работает!');
-});
 
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
 });
 
-const USERS_FILE = path.join('data', 'users.json');
-const BLACKLIST_FILE = path.join('data', 'tokens_bl.json');
-
-// Чтение пользователей из файла
-async function readUsers() {
-    const data = await fs.readFile(USERS_FILE, 'utf8');
-    return JSON.parse(data);
-}
-
-// Запись пользователей в файл
-async function writeUsers(users) {
-    await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-// Чтение blacklist токенов
-async function readBlacklist() {
-    try {
-        const data = await fs.readFile(BLACKLIST_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        // Если файла нет, возвращаем пустой массив
-        return [];
-    }
-}
-
-// Добавление токена в blacklist
-async function addToBlacklist(token) {
-    try {
-        const blacklist = await readBlacklist();
-
-        // Декодируем токен, чтобы узнать время истечения
-        const decoded = jwt.decode(token);
-        const expiresAt = decoded.exp * 1000; // Конвертируем в миллисекунды
-
-        blacklist.push({
-            token,
-            expiresAt,
-            blacklistedAt: new Date().toISOString(),
-        });
-        console.log('blacklist: ', blacklist);
-
-        await fs.writeFile(BLACKLIST_FILE, JSON.stringify(blacklist, null, 2));
-    } catch (error) {
-        console.error('Ошибка при добавлении в blacklist:', error);
-    }
-}
-
-// Проверка, находится ли токен в blacklist
-async function isTokenBlacklisted(token) {
-    try {
-        const blacklist = await readBlacklist();
-        const now = Date.now();
-
-        // Фильтруем протухшие токены (чистим blacklist)
-        const validBlacklist = blacklist.filter((item) => item.expiresAt > now);
-
-        // Если есть протухшие, обновляем файл
-        if (validBlacklist.length !== blacklist.length) {
-            await fs.writeFile(
-                BLACKLIST_FILE,
-                JSON.stringify(validBlacklist, null, 2),
-            );
-        }
-
-        return validBlacklist.some((item) => item.token === token);
-    } catch (error) {
-        return false;
-    }
-}
+app.get('/', (_, res) => {
+    res.send('API личного кабинета работает!');
+});
 
 app.post('/api/register', async (req, res) => {
     try {
@@ -195,8 +135,7 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
         res.status(500).json({ message: 'Ошибка сервера' });
     }
 });
-
-// logout endpoint
+ 
 app.post('/api/logout', authMiddleware, async (req, res) => {
     try {
         const token = req.headers.authorization.replace('Bearer ', '');
@@ -213,5 +152,54 @@ app.post('/api/logout', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Ошибка при логауте:', error);
         res.status(500).json({ message: 'Ошибка сервера при выходе' });
+    }
+});
+
+// RPC стиль
+app.post('/rpc', async (req, res) => {
+    try {
+        const { method, params, id } = req.body;
+
+        // Проверка структуры запроса
+        if (!method || typeof method !== 'string') {
+            return res.json({
+                jsonrpc: '2.0',
+                error: { code: -32600, message: 'Invalid Request' },
+                id: id || null
+            });
+        }
+
+        // Роутинг методов
+        const [namespace, action] = method.split('.');
+
+        let result;
+        switch (namespace) {
+            case 'auth':
+                result = await handleAuthRPC(action, params, req);
+                break;
+            case 'user':
+                result = await handleUserRPC(action, params, req);
+                break;
+            default:
+                throw new Error('Method not found');
+        }
+
+        // Успешный ответ
+        res.json({
+            jsonrpc: '2.0',
+            result: result,
+            id: id
+        });
+
+    } catch (error) {
+        // Ошибка
+        res.json({
+            jsonrpc: '2.0',
+            error: {
+                code: -32603,
+                message: error.message
+            },
+            id: req.body.id || null
+        });
     }
 });
