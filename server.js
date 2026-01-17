@@ -20,186 +20,223 @@ app.use(express.json()); // Позволяет читать JSON в теле з�
 
 const PORT = process.env.PORT;
 
-
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
 });
 
-app.get('/', (_, res) => {
-    res.send('API личного кабинета работает!');
+// Проверка работы API
+app.get('/api/health', (_, res) => {
+    res.json({
+        success: true,
+        data: {
+            service: 'User Dashboard API',
+            status: 'running',
+            timestamp: new Date().toISOString()
+        }
+    });
 });
 
-app.post('/api/register', async (req, res) => {
+// 1. РЕГИСТРАЦИЯ (Sign Up)
+app.post('/api/auth/sign-up', async (req, res) => {
     try {
-        // Проверяем, что тело не пустое
-        if (!req.body || Object.keys(req.body).length === 0) {
-            return res.status(400).json({
-                message: 'Тело запроса пустое или не является JSON',
-            });
-        }
+        console.log('📝 Sign Up запрос:', req.body);
+
         const { email, password, name } = req.body;
 
         // Валидация
         if (!email || !password || !name) {
-            return res.status(400).json({ message: 'Все поля обязательны' });
+            return res.status(400).json({
+                success: false,
+                error: 'Все поля обязательны: email, password, name'
+            });
+        }
+
+        // Простая валидация email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат email'
+            });
         }
 
         const users = await readUsers();
 
         // Проверка существования пользователя
-        if (users.find((user) => user.email === email)) {
-            return res.status(400).json({ message: 'Пользователь уже существует' });
+        if (users.find(user => user.email === email)) {
+            return res.status(409).json({
+                success: false,
+                error: 'Пользователь с таким email уже существует'
+            });
         }
 
         // Хеширование пароля
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Создание нового пользователя
+        // Создание пользователя
         const newUser = {
-            id: Date.now(),
+            id: Date.now().toString(),
             email,
             password: hashedPassword,
             name,
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
 
         users.push(newUser);
         await writeUsers(users);
 
-        res.status(201).json({ message: 'Пользователь успешно зарегистрирован' });
+        console.log(`✅ Пользователь создан: ${email}`);
+
+        res.status(201).json({
+            success: true,
+            data: {
+                message: 'Пользователь успешно зарегистрирован',
+                userId: newUser.id,
+                user: {
+                    id: newUser.id,
+                    email: newUser.email,
+                    name: newUser.name
+                }
+            }
+        });
+
     } catch (error) {
-        res.status(500).json({ message: 'Ошибка сервера' });
+        console.error('❌ Ошибка Sign Up:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка сервера'
+        });
     }
 });
 
-app.post('/api/login', async (req, res) => {
+// 2. ВХОД (Sign In)
+app.post('/api/auth/sign-in', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const users = await readUsers();
+        console.log('🔐 Sign In запрос для:', req.body.email);
 
-        const user = users.find((user) => user.email === email);
-        if (!user) {
-            return res.status(401).json({ message: 'Неверный email или пароль' });
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email и password обязательны'
+            });
         }
 
-        // Сравнение пароля с хешем
+        const users = await readUsers();
+        const user = users.find(user => user.email === email);
+
+        if (!user) {
+            console.log('❌ Пользователь не найден:', email);
+            return res.status(401).json({
+                success: false,
+                error: 'Неверный email или пароль'
+            });
+        }
+
+        // Проверка пароля
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            return res.status(401).json({ message: 'Неверный email или пароль' });
+            console.log('❌ Неверный пароль для:', email);
+            return res.status(401).json({
+                success: false,
+                error: 'Неверный email или пароль'
+            });
         }
 
         // Генерация JWT токена
         const token = jwt.sign(
-            { id: user.id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' },
-        );
-
-        res.json({
-            token,
-            user: {
+            {
                 id: user.id,
                 email: user.email,
-                name: user.name,
+                name: user.name
             },
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Ошибка сервера' });
-    }
-});
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
 
-app.get('/api/profile', authMiddleware, async (req, res) => {
-    try {
-        const users = await readUsers();
-        const user = users.find((u) => u.id === req.user.id);
+        console.log(`✅ Успешный вход: ${email}`);
 
-        if (!user) {
-            return res.status(404).json({ message: 'Пользователь не найден' });
-        }
-
-        // Проверяем, не отозван ли токен (дополнительная защита)
-        const token = req.headers.authorization.replace('Bearer ', '');
-        const isBlacklisted = await isTokenBlacklisted(token);
-
-        if (isBlacklisted) {
-            return res.status(401).json({ message: 'Сессия завершена' });
-        }
-
-        const { password, ...userData } = user;
         res.json({
-            ...userData,
-            sessionActive: true,
-            lastActivity: new Date().toISOString(),
+            success: true,
+            data: {
+                token,
+                tokenType: 'Bearer',
+                expiresIn: 3600, // секунд
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name
+                }
+            }
         });
+
     } catch (error) {
-        res.status(500).json({ message: 'Ошибка сервера' });
+        console.error('❌ Ошибка Sign In:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка сервера'
+        });
     }
 });
- 
-app.post('/api/logout', authMiddleware, async (req, res) => {
+
+// 3. ВЫХОД (Sign Out)
+app.post('/api/auth/sign-out', authMiddleware, async (req, res) => {
     try {
         const token = req.headers.authorization.replace('Bearer ', '');
 
         // Добавляем токен в blacklist
         await addToBlacklist(token);
 
-        console.log(`Пользователь ${req.user.email} вышел из системы`);
+        console.log(`🚪 Пользователь ${req.user.email} вышел из системы`);
 
         res.json({
-            message: 'Вы вышли из системы',
-            logoutTime: new Date().toISOString(),
+            success: true,
+            data: {
+                message: 'Вы успешно вышли из системы',
+                logoutTime: new Date().toISOString()
+            }
         });
+
     } catch (error) {
-        console.error('Ошибка при логауте:', error);
-        res.status(500).json({ message: 'Ошибка сервера при выходе' });
+        console.error('❌ Ошибка Sign Out:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка при выходе из системы'
+        });
     }
 });
 
-// RPC стиль
-app.post('/rpc', async (req, res) => {
+// 4. ПОЛУЧЕНИЕ ПРОФИЛЯ  
+app.get('/api/users/me', authMiddleware, async (req, res) => {
     try {
-        const { method, params, id } = req.body;
+        const users = await readUsers();
+        const user = users.find(u => u.id === req.user.id);
 
-        // Проверка структуры запроса
-        if (!method || typeof method !== 'string') {
-            return res.json({
-                jsonrpc: '2.0',
-                error: { code: -32600, message: 'Invalid Request' },
-                id: id || null
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'Пользователь не найден'
             });
         }
 
-        // Роутинг методов
-        const [namespace, action] = method.split('.');
+        const { password, ...userData } = user;
 
-        let result;
-        switch (namespace) {
-            case 'auth':
-                result = await handleAuthRPC(action, params, req);
-                break;
-            case 'user':
-                result = await handleUserRPC(action, params, req);
-                break;
-            default:
-                throw new Error('Method not found');
-        }
-
-        // Успешный ответ
         res.json({
-            jsonrpc: '2.0',
-            result: result,
-            id: id
+            success: true,
+            data: {
+                ...userData,
+                sessionActive: true,
+                lastActivity: new Date().toISOString()
+            }
         });
 
     } catch (error) {
-        // Ошибка
-        res.json({
-            jsonrpc: '2.0',
-            error: {
-                code: -32603,
-                message: error.message
-            },
-            id: req.body.id || null
+        console.error('❌ Ошибка получения профиля:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Ошибка при получении профиля'
         });
     }
 });

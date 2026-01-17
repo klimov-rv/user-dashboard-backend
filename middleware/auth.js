@@ -1,22 +1,43 @@
 import jwt from 'jsonwebtoken';
 
-function authMiddleware(req, res, next) {
-    // Токен в заголовке Authorization: Bearer <token>
-    const authHeader = req.header('Authorization');
-
-    if (!authHeader) {
-        return res.status(401).json({ message: 'Нет токена, доступ запрещен' });
-    }
-
-    // Извлекаем токен из строки "Bearer <token>"
-    const token = authHeader.replace('Bearer ', '');
-
+async function authMiddleware(req, res, next) {
     try {
+        const authHeader = req.header('Authorization');
+
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                error: 'Требуется авторизация'
+            });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+
+        // Проверяем blacklist
+        const isBlacklisted = await isTokenBlacklisted(token);
+        if (isBlacklisted) {
+            return res.status(401).json({
+                success: false,
+                error: 'Сессия истекла. Войдите снова.'
+            });
+        }
+
+        // Верифицируем токен
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded; // Добавляем данные пользователя в запрос
+        req.user = decoded;
         next();
     } catch (error) {
-        res.status(401).json({ message: 'Неверный токен', error });
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                success: false,
+                error: 'Токен истек'
+            });
+        }
+
+        res.status(401).json({
+            success: false,
+            error: 'Неверный токен'
+        });
     }
 }
 

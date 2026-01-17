@@ -18,10 +18,10 @@ export async function writeUsers(users) {
 // Чтение blacklist токенов
 export async function readBlacklist() {
     try {
+        await fs.access(BLACKLIST_FILE);
         const data = await fs.readFile(BLACKLIST_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        // Если файла нет, возвращаем пустой массив
         return [];
     }
 }
@@ -31,18 +31,26 @@ export async function addToBlacklist(token) {
     try {
         const blacklist = await readBlacklist();
 
-        // Декодируем токен, чтобы узнать время истечения
+        // Декодируем токен для получения времени истечения
         const decoded = jwt.decode(token);
-        const expiresAt = decoded.exp * 1000; // Конвертируем в миллисекунды
+        if (!decoded || !decoded.exp) {
+            console.error('Не могу декодировать токен');
+            return;
+        }
 
-        blacklist.push({
-            token,
-            expiresAt,
-            blacklistedAt: new Date().toISOString(),
-        });
-        console.log('blacklist: ', blacklist);
+        const expiresAt = decoded.exp * 1000; // в миллисекундах
 
-        await fs.writeFile(BLACKLIST_FILE, JSON.stringify(blacklist, null, 2));
+        // Добавляем только если еще нет
+        if (!blacklist.some(item => item.token === token)) {
+            blacklist.push({
+                token,
+                expiresAt,
+                blacklistedAt: new Date().toISOString()
+            });
+
+            await fs.writeFile(BLACKLIST_FILE, JSON.stringify(blacklist, null, 2));
+            console.log('Токен добавлен в blacklist');
+        }
     } catch (error) {
         console.error('Ошибка при добавлении в blacklist:', error);
     }
@@ -54,18 +62,15 @@ export async function isTokenBlacklisted(token) {
         const blacklist = await readBlacklist();
         const now = Date.now();
 
-        // Фильтруем протухшие токены (чистим blacklist)
-        const validBlacklist = blacklist.filter((item) => item.expiresAt > now);
+        // Фильтруем только актуальные токены
+        const validBlacklist = blacklist.filter(item => item.expiresAt > now);
 
-        // Если есть протухшие, обновляем файл
+        // Удаляем протухшие из файла
         if (validBlacklist.length !== blacklist.length) {
-            await fs.writeFile(
-                BLACKLIST_FILE,
-                JSON.stringify(validBlacklist, null, 2),
-            );
+            await fs.writeFile(BLACKLIST_FILE, JSON.stringify(validBlacklist, null, 2));
         }
 
-        return validBlacklist.some((item) => item.token === token);
+        return validBlacklist.some(item => item.token === token);
     } catch (error) {
         return false;
     }
