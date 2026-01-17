@@ -2,7 +2,7 @@
 @username = user_1
 @password = password
 @contentType = application/json
-@temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODY4MDQ5NDQ4NiwidXNlcm5hbWUiOiJ1c2VyXzEiLCJpYXQiOjE3Njg2ODI0MDAsImV4cCI6MTc2ODY4NjAwMH0.H-P9rTzSBCh9fpt4rmpFLfMi0kVTHu6F9_ftLmUUzco
+@temporaryJWT = Bearer <ваш_токен_здесь>
 
 ### Проверка работы сервера
 GET {{host_api}}/health

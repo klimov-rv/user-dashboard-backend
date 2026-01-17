@@ -1,45 +1,32 @@
-@host = http://localhost:5000
-@email = test@mail.com
-@password = 123456
-@name = Тестовый Пользователь
+@host_api = http://localhost:5000/api
+@username = user_1
+@password = password
 @contentType = application/json
 @temporaryJWT = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2ODUxMzc5MDM2OCwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzY4NjUyOTU3LCJleHAiOjE3Njg2NTY1NTd9.g4M4sd67riZ_WgJjQ5MZgNqUn9AGtE8djtellAT1GEI
 
 ### Вход с неверными данными
-POST {{host}}/api/login
+POST {{host_api}}/auth/sign-in
 Content-Type: {{contentType}}
 
 {
-  "email": "wrong@mail.com",
+  "username": "wrongname",
   "password": "wrongpassword"
 }
 
 ### Регистрация с существующим email
-POST {{host}}/api/register
+POST {{host_api}}/auth/sign-up
 Content-Type: {{contentType}}
 
 {
-  "email": "{{email}}",
+  "username": "{{username}}",
   "password": "anotherpassword",
   "name": "Другой Пользователь"
 }
 
 ### Регистрация с неполными данными
-POST {{host}}/api/register
+POST {{host_api}}/auth/sign-up
 Content-Type: {{contentType}}
 
 {
-  "email": "incomplete@mail.com"
-}
-
-
-### RPC запрос с ошибкой (несуществующий метод)
-POST {{host}}/rpc
-Content-Type: {{contentType}}
-
-{
-  "jsonrpc": "2.0",
-  "method": "auth.nonexistent",
-  "params": {},
-  "id": 4
+  "username": "{{username}}",
 }
